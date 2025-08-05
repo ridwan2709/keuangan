@@ -1,0 +1,188 @@
+{
+  "transactions": [
+    {
+      "date": "2025-07-16",
+      "description": "Nurma Dana Awal",
+      "category": "Dana Awal",
+      "type": "Pemasukan",
+      "amount": 300000,
+      "id": 1722842043001
+    },
+    {
+      "date": "2025-07-16",
+      "description": "An An Dana Awal",
+      "category": "Dana Awal",
+      "type": "Pemasukan",
+      "amount": 1320000,
+      "id": 1722842043002
+    },
+    {
+      "date": "2025-07-16",
+      "description": "Inayah Dana Awal",
+      "category": "Dana Awal",
+      "type": "Pemasukan",
+      "amount": 1020000,
+      "id": 1722842043003
+    },
+    {
+      "date": "2025-07-16",
+      "description": "Ahdan Dana Awal",
+      "category": "Dana Awal",
+      "type": "Pemasukan",
+      "amount": 300000,
+      "id": 1722842043004
+    },
+    {
+      "date": "2025-07-17",
+      "description": "Dinas (MPLS)",
+      "category": "Transportasi",
+      "type": "Pengeluaran",
+      "amount": 200000,
+      "id": 1722842043005
+    },
+    {
+      "date": "2025-07-17",
+      "description": "Konsumsi Guru (MPLS)",
+      "category": "Makanan & Minuman",
+      "type": "Pengeluaran",
+      "amount": 100000,
+      "id": 1722842043006
+    },
+    {
+      "date": "2025-07-17",
+      "description": "MGMP RPL",
+      "category": "Lainnya",
+      "type": "Pengeluaran",
+      "amount": 150000,
+      "id": 1722842043007
+    },
+    {
+      "date": "2025-07-19",
+      "description": "Bayar Listrik & Wifi",
+      "category": "Tagihan",
+      "type": "Pengeluaran",
+      "amount": 818000,
+      "id": 1722842043008
+    },
+    {
+      "date": "2025-07-20",
+      "description": "Belanja ATK",
+      "category": "Belanja",
+      "type": "Pengeluaran",
+      "amount": 885000,
+      "id": 1722842043009
+    },
+    {
+      "date": "2025-07-20",
+      "description": "Konsumsi Guru persiapan administ",
+      "category": "Makanan & Minuman",
+      "type": "Pengeluaran",
+      "amount": 66000,
+      "id": 1722842043010
+    },
+    {
+      "date": "2025-07-20",
+      "description": "Konsumsi Begadang",
+      "category": "Makanan & Minuman",
+      "type": "Pengeluaran",
+      "amount": 48000,
+      "id": 1722842043011
+    },
+    {
+      "date": "2025-07-23",
+      "description": "Perjalanan Ganti Specimen",
+      "category": "Transportasi",
+      "type": "Pengeluaran",
+      "amount": 150000,
+      "id": 1722842043012
+    },
+    {
+      "date": "2025-07-23",
+      "description": "Konsumsi Ganti Specimen",
+      "category": "Makanan & Minuman",
+      "type": "Pengeluaran",
+      "amount": 110000,
+      "id": 1722842043013
+    },
+    {
+      "date": "2025-07-24",
+      "description": "Print Akta yayasan lama + ganda",
+      "category": "Lainnya",
+      "type": "Pengeluaran",
+      "amount": 66000,
+      "id": 1722842043014
+    },
+    {
+      "date": "2025-07-24",
+      "description": "Pak Doel Kasbon",
+      "category": "Lainnya",
+      "type": "Pengeluaran",
+      "amount": 100000,
+      "id": 1722842043015
+    },
+    {
+      "date": "2025-08-01",
+      "description": "Ayu Lestari SPP",
+      "category": "SPP",
+      "type": "Pemasukan",
+      "amount": 150000,
+      "id": 1722842043016
+    },
+    {
+      "date": "2025-08-01",
+      "description": "Hera SPP",
+      "category": "SPP",
+      "type": "Pemasukan",
+      "amount": 150000,
+      "id": 1722842043017
+    },
+    {
+      "date": "2025-08-01",
+      "description": "Zenal APP",
+      "category": "Pendidikan",
+      "type": "Pemasukan",
+      "amount": 300000,
+      "id": 1722842043018
+    },
+    {
+      "date": "2025-08-01",
+      "description": "Suci SPP",
+      "category": "SPP",
+      "type": "Pemasukan",
+      "amount": 150000,
+      "id": 1722842043019
+    },
+    {
+      "date": "2025-08-01",
+      "description": "Amanda Dana Awal",
+      "category": "Dana Awal",
+      "type": "Pemasukan",
+      "amount": 800000,
+      "id": 1722842043020
+    },
+    {
+      "date": "2025-08-02",
+      "description": "Murni Buniarti ANBK",
+      "category": "Pendidikan",
+      "type": "Pemasukan",
+      "amount": 150000,
+      "id": 1722842043021
+    },
+    {
+      "date": "2025-08-02",
+      "description": "Sila ANBK",
+      "category": "Pendidikan",
+      "type": "Pemasukan",
+      "amount": 150000,
+      "id": 1722842043022
+    },
+    {
+      "date": "2025-08-05",
+      "description": "Suherlan ANBK",
+      "category": "Pendidikan",
+      "type": "Pemasukan",
+      "amount": 100000,
+      "id": 1722842043023
+    }
+  ]
+}

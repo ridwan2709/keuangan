@@ -1,0 +1,243 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>KeuanganKu - Laporan Keuangan</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Library untuk Export Excel -->
+    <script src="https://cdn.sheetjs.com/xlsx-0.20.1/package/dist/xlsx.full.min.js"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+    <style>
+        body { font-family: 'Inter', sans-serif; }
+        #transaction-list::-webkit-scrollbar { width: 8px; }
+        #transaction-list::-webkit-scrollbar-track { background: #f1f1f1; border-radius: 10px; }
+        #transaction-list::-webkit-scrollbar-thumb { background: #888; border-radius: 10px; }
+        #transaction-list::-webkit-scrollbar-thumb:hover { background: #555; }
+        .filter-btn.active {
+            background-color: #2563eb; /* bg-blue-600 */
+            color: white;
+        }
+    </style>
+</head>
+<body class="bg-slate-100 text-gray-900">
+
+    <header class="bg-white shadow-md">
+        <div class="container mx-auto px-4 py-4 flex justify-between items-center">
+            <div class="flex items-center gap-4">
+                <h1 class="text-2xl font-bold text-blue-600">Keuangan SMK M-U</h1>
+                <div id="digital-clock" class="text-xl font-semibold text-gray-700 bg-gray-100 px-3 py-1 rounded-lg shadow-inner"></div>
+            </div>
+            <div class="flex items-center gap-4">
+                <button id="clear-data-btn" class="bg-red-500 text-white font-bold py-2 px-4 rounded-lg hover:bg-red-600 transition-colors text-sm">
+                    Hapus Semua Data
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <main id="main-content" class="container mx-auto p-4 md:p-8">
+        <!-- Dashboard dirender di sini -->
+    </main>
+    
+    <!-- Template Dashboard -->
+    <template id="dashboard-view">
+        <div id="summary-section"></div>
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+            <div class="bg-white p-6 rounded-lg shadow-lg mb-8">
+                <h2 class="text-2xl font-bold mb-4 text-gray-800">Tambah Transaksi Baru</h2>
+                <form id="transaction-form"><!-- Form tambah data --></form>
+            </div>
+            <div class="bg-white p-6 rounded-lg shadow-lg">
+                <div class="flex justify-between items-center mb-4">
+                    <h2 class="text-2xl font-bold text-gray-800">Riwayat Transaksi</h2>
+                    <button id="export-excel-btn" class="bg-green-600 text-white font-bold py-2 px-4 rounded-lg hover:bg-green-700 transition-colors text-sm inline-flex items-center gap-2">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
+                        <span>Export</span>
+                    </button>
+                </div>
+                
+                <!-- Fitur Filter dan Pencarian -->
+                <div class="flex flex-col md:flex-row gap-4 mb-4">
+                    <div class="relative flex-grow">
+                        <span class="absolute inset-y-0 left-0 flex items-center pl-3">
+                            <svg class="w-5 h-5 text-gray-400" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
+                                <path fill-rule="evenodd" d="M8 4a4 4 0 100 8 4 4 0 000-8zM2 8a6 6 0 1110.89 3.476l4.817 4.817a1 1 0 01-1.414 1.414l-4.816-4.816A6 6 0 012 8z" clip-rule="evenodd" />
+                            </svg>
+                        </span>
+                        <input type="text" id="search-input" placeholder="Cari deskripsi, jumlah, kategori..." class="w-full p-2 pl-10 border rounded-lg focus:ring-2 focus:ring-blue-500">
+                    </div>
+                    <div id="filter-buttons" class="flex-shrink-0 flex items-center justify-center gap-2">
+                        <button data-filter="semua" class="filter-btn px-4 py-2 rounded-lg text-sm font-semibold transition-colors bg-gray-200 text-gray-700 hover:bg-gray-300 active">Semua</button>
+                        <button data-filter="pemasukan" class="filter-btn px-4 py-2 rounded-lg text-sm font-semibold transition-colors bg-gray-200 text-gray-700 hover:bg-gray-300">Pemasukan</button>
+                        <button data-filter="pengeluaran" class="filter-btn px-4 py-2 rounded-lg text-sm font-semibold transition-colors bg-gray-200 text-gray-700 hover:bg-gray-300">Pengeluaran</button>
+                    </div>
+                </div>
+
+                <div id="transaction-list" class="space-y-3 max-h-[22rem] overflow-y-auto pr-2"></div>
+            </div>
+        </div>
+    </template>
+    
+    <!-- Modal untuk Edit Transaksi -->
+    <div id="edit-modal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 hidden">
+        <div class="bg-white p-6 rounded-lg shadow-xl w-full max-w-md mx-4">
+            <h2 class="text-2xl font-bold mb-6">Edit Transaksi</h2>
+            <form id="edit-form"><!-- Form edit dirender di sini --></form>
+        </div>
+    </div>
+    
+    <div id="loading-overlay" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 hidden">
+        <div class="animate-spin rounded-full h-16 w-16 border-t-2 border-b-2 border-white"></div>
+    </div>
+
+    <script>
+        const API_BASE_URL = 'http://localhost:3000/api';
+        const CATEGORIES = ['Dana Awal', 'SPP', 'Gaji', 'Makanan & Minuman', 'Transportasi', 'Belanja', 'Tagihan', 'Kesehatan', 'Hiburan', 'Pendidikan', 'Investasi', 'Lainnya'];
+        const mainContent = document.getElementById('main-content');
+        const loadingOverlay = document.getElementById('loading-overlay');
+        
+        let allTransactions = [];
+        let currentFilter = 'semua';
+        let searchTerm = '';
+
+        window.onload = () => {
+            updateView();
+            document.getElementById('clear-data-btn').addEventListener('click', clearAllData);
+            // Menjalankan jam digital
+            updateClock();
+            setInterval(updateClock, 1000);
+        };
+
+        // --- FUNGSI JAM DIGITAL ---
+        function updateClock() {
+            const clockElement = document.getElementById('digital-clock');
+            if (clockElement) {
+                const now = new Date();
+                const hours = String(now.getHours()).padStart(2, '0');
+                const minutes = String(now.getMinutes()).padStart(2, '0');
+                const seconds = String(now.getSeconds()).padStart(2, '0');
+                clockElement.textContent = `${hours}:${minutes}:${seconds}`;
+            }
+        }
+
+        // --- FUNGSI INTERAKSI DENGAN BACKEND ---
+        async function fetchTransactions() {
+            showLoading();
+            try {
+                const response = await fetch(`${API_BASE_URL}/transactions`);
+                if (!response.ok) throw new Error(`Gagal mengambil data: ${response.statusText}`);
+                const transactions = await response.json();
+                allTransactions = transactions.sort((a, b) => b.id - a.id);
+            } catch (error) {
+                handleError(error, 'Tidak dapat terhubung ke server. Pastikan server backend sudah berjalan.');
+                allTransactions = [];
+            } finally {
+                hideLoading();
+            }
+        }
+        
+        // --- FUNGSI EXPORT EXCEL ---
+        function exportToExcel() {
+            const dataToExport = getFilteredTransactions();
+
+            if (dataToExport.length === 0) {
+                alert("Tidak ada data untuk diekspor.");
+                return;
+            }
+
+            const headers = ["ID", "Tanggal", "Deskripsi", "Kategori", "Jenis", "Jumlah"];
+            
+            const formattedData = dataToExport.map(t => [
+                t.id,
+                t.date,
+                t.description,
+                t.category,
+                t.type,
+                t.amount
+            ]);
+
+            const worksheetData = [headers, ...formattedData];
+            const ws = XLSX.utils.aoa_to_sheet(worksheetData);
+            const wb = XLSX.utils.book_new();
+            XLSX.utils.book_append_sheet(wb, ws, "Laporan Keuangan");
+            XLSX.writeFile(wb, "Laporan_KeuanganKu.xlsx");
+        }
+
+        // --- FUNGSI CRUD (Create, Read, Update, Delete) ---
+        async function addTransaction(transaction) { showLoading(); try { const response = await fetch(`${API_BASE_URL}/transactions`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(transaction) }); if (!response.ok) throw new Error('Gagal menyimpan data ke server.'); await updateView(); } catch (error) { handleError(error, 'Gagal menambahkan transaksi.'); } finally { hideLoading(); } }
+        async function clearAllData() { if (confirm("Apakah Anda yakin ingin menghapus semua data transaksi? Tindakan ini tidak dapat dibatalkan.")) { showLoading(); try { const response = await fetch(`${API_BASE_URL}/transactions`, { method: 'DELETE' }); if (!response.ok) throw new Error('Gagal menghapus data di server.'); await updateView(); } catch (error) { handleError(error, 'Gagal menghapus semua data.'); } finally { hideLoading(); } } }
+        async function deleteTransaction(id) { if (confirm("Anda yakin ingin menghapus transaksi ini?")) { showLoading(); try { const response = await fetch(`${API_BASE_URL}/transactions/${id}`, { method: 'DELETE' }); if (!response.ok) throw new Error('Gagal menghapus data di server.'); await updateView(); } catch (error) { handleError(error, 'Gagal menghapus transaksi.'); } finally { hideLoading(); } } }
+        async function updateTransaction(id, transactionData) { showLoading(); try { const response = await fetch(`${API_BASE_URL}/transactions/${id}`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(transactionData) }); if (!response.ok) throw new Error('Gagal memperbarui data di server.'); closeEditModal(); await updateView(); } catch (error) { handleError(error, 'Gagal menyimpan perubahan.'); } finally { hideLoading(); } }
+
+        // --- FUNGSI MODAL ---
+        function openEditModal(transaction) {
+            const modal = document.getElementById('edit-modal');
+            const form = document.getElementById('edit-form');
+            form.innerHTML = `<input type="hidden" id="edit-id" value="${transaction.id}"><div class="grid grid-cols-1 md:grid-cols-2 gap-4"><div class="col-span-1 md:col-span-2"><div id="edit-type-container" class="flex justify-center gap-4"><label class="flex-1 p-3 rounded-lg text-center cursor-pointer transition-all ${transaction.type === 'Pemasukan' ? 'bg-green-500 text-white' : 'bg-gray-200 text-gray-700'}"><input type="radio" name="edit-type" value="Pemasukan" class="hidden" ${transaction.type === 'Pemasukan' ? 'checked' : ''} /> Pemasukan</label><label class="flex-1 p-3 rounded-lg text-center cursor-pointer transition-all ${transaction.type === 'Pengeluaran' ? 'bg-red-500 text-white' : 'bg-gray-200 text-gray-700'}"><input type="radio" name="edit-type" value="Pengeluaran" class="hidden" ${transaction.type === 'Pengeluaran' ? 'checked' : ''} /> Pengeluaran</label></div></div><input type="text" id="edit-description" placeholder="Deskripsi" class="p-3 border rounded-lg focus:ring-2 focus:ring-blue-500 col-span-2" required value="${transaction.description}" /><input type="number" id="edit-amount" placeholder="Jumlah" class="p-3 border rounded-lg focus:ring-2 focus:ring-blue-500" required value="${transaction.amount}" /><select id="edit-category" class="p-3 border rounded-lg bg-white focus:ring-2 focus:ring-blue-500" required>${CATEGORIES.map(c => `<option value="${c}" ${c === transaction.category ? 'selected' : ''}>${c}</option>`).join('')}</select><input type="date" id="edit-date" class="p-3 border rounded-lg focus:ring-2 focus:ring-blue-500 col-span-2" required value="${transaction.date}" /></div><div class="flex justify-end gap-4 mt-6"><button type="button" id="cancel-edit-btn" class="bg-gray-300 text-gray-800 px-4 py-2 rounded-lg hover:bg-gray-400">Batal</button><button type="submit" class="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700">Simpan Perubahan</button></div>`;
+            modal.classList.remove('hidden');
+            document.getElementById('cancel-edit-btn').addEventListener('click', closeEditModal);
+        }
+        function closeEditModal() { document.getElementById('edit-modal').classList.add('hidden'); }
+
+        // --- FUNGSI RENDER UI ---
+        async function updateView() {
+            await fetchTransactions();
+            renderDashboard();
+        }
+
+        function renderDashboard() {
+            const template = document.getElementById('dashboard-view');
+            mainContent.innerHTML = '';
+            mainContent.appendChild(template.content.cloneNode(true));
+            
+            document.getElementById('export-excel-btn').addEventListener('click', exportToExcel);
+            
+            renderSummary(allTransactions);
+            applyFiltersAndRender();
+            setupAddForm();
+            setupEditForm();
+            setupFilterControls();
+        }
+        
+        function getFilteredTransactions() {
+            let filtered = [...allTransactions];
+
+            if (currentFilter === 'pemasukan') {
+                filtered = filtered.filter(t => t.type === 'Pemasukan');
+            } else if (currentFilter === 'pengeluaran') {
+                filtered = filtered.filter(t => t.type === 'Pengeluaran');
+            }
+
+            const term = searchTerm.toLowerCase();
+            if (term) {
+                filtered = filtered.filter(t => 
+                    t.description.toLowerCase().includes(term) ||
+                    t.amount.toString().includes(term) ||
+                    t.category.toLowerCase().includes(term) ||
+                    t.date.includes(term)
+                );
+            }
+            return filtered;
+        }
+        
+        function applyFiltersAndRender() {
+            const filteredTransactions = getFilteredTransactions();
+            renderTransactionList(filteredTransactions);
+        }
+
+        function renderSummary(transactions) { const { totalIncome, totalExpense } = transactions.reduce((acc, t) => { const amount = parseFloat(t.amount) || 0; if (t.type === 'Pemasukan') acc.totalIncome += amount; else acc.totalExpense += amount; return acc; }, { totalIncome: 0, totalExpense: 0 }); document.getElementById('summary-section').innerHTML = `<div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8"><div class="bg-green-100 border-l-4 border-green-500 text-green-800 p-4 rounded-lg shadow-md"><p class="text-sm font-semibold">Total Pemasukan</p> <p class="text-2xl font-bold">Rp ${totalIncome.toLocaleString('id-ID')}</p></div><div class="bg-red-100 border-l-4 border-red-500 text-red-800 p-4 rounded-lg shadow-md"><p class="text-sm font-semibold">Total Pengeluaran</p> <p class="text-2xl font-bold">Rp ${totalExpense.toLocaleString('id-ID')}</p></div><div class="bg-blue-100 border-l-4 border-blue-500 text-blue-800 p-4 rounded-lg shadow-md"><p class="text-sm font-semibold">Saldo Akhir</p> <p class="text-2xl font-bold">Rp ${(totalIncome - totalExpense).toLocaleString('id-ID')}</p></div></div>`; }
+        function renderTransactionList(transactions) { const listContainer = document.getElementById('transaction-list'); listContainer.innerHTML = transactions.length > 0 ? transactions.map(t => `<div class="flex justify-between items-center p-3 rounded-lg bg-gray-50 border group"><div class="flex items-center gap-3 overflow-hidden"><div class="w-10 h-10 rounded-full flex-shrink-0 flex items-center justify-center ${t.type === 'Pemasukan' ? 'bg-green-100 text-green-600' : 'bg-red-100 text-red-600'}"><span class="text-xl font-bold">${t.type === 'Pemasukan' ? '↓' : '↑'}</span></div><div class="overflow-hidden"><p class="font-semibold text-gray-800 truncate">${t.description}</p><p class="text-sm text-gray-500">${t.category} • ${new Date(t.date).toLocaleDateString('id-ID', { day: 'numeric', month: 'long' })}</p></div></div><div class="flex items-center gap-2 flex-shrink-0"><p class="font-bold text-lg ${t.type === 'Pemasukan' ? 'text-green-600' : 'text-red-600'}">${t.type === 'Pemasukan' ? '+' : '-'}Rp ${parseFloat(t.amount).toLocaleString('id-ID')}</p><div class="flex opacity-0 group-hover:opacity-100 transition-opacity"><button class="edit-btn p-1 text-gray-500 hover:text-blue-600" title="Edit" data-id="${t.id}"><svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg></button><button class="delete-btn p-1 text-gray-500 hover:text-red-600" title="Hapus" data-id="${t.id}"><svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg></button></div></div></div>`).join('') : '<p class="text-center text-gray-500 py-8">Tidak ada transaksi yang cocok.</p>'; document.querySelectorAll('.delete-btn').forEach(btn => btn.addEventListener('click', (e) => deleteTransaction(e.currentTarget.dataset.id))); document.querySelectorAll('.edit-btn').forEach(btn => btn.addEventListener('click', (e) => { const id = parseInt(e.currentTarget.dataset.id); const transaction = allTransactions.find(t => t.id === id); if(transaction) openEditModal(transaction); })); }
+        function setupAddForm() { const formContainer = document.getElementById('transaction-form'); formContainer.innerHTML = `<div class="grid grid-cols-1 md:grid-cols-2 gap-4"><div class="col-span-1 md:col-span-2"><div class="flex justify-center gap-4"><label class="flex-1 p-3 rounded-lg text-center cursor-pointer transition-all bg-gray-200 text-gray-700 has-[:checked]:bg-green-500 has-[:checked]:text-white has-[:checked]:shadow-md"><input type="radio" name="type" value="Pemasukan" class="hidden" /> Pemasukan</label><label class="flex-1 p-3 rounded-lg text-center cursor-pointer transition-all bg-red-500 text-white shadow-md has-[:checked]:bg-red-500 has-[:checked]:text-white has-[:checked]:shadow-md"><input type="radio" name="type" value="Pengeluaran" class="hidden" checked /> Pengeluaran</label></div></div><input type="text" id="description" placeholder="Deskripsi (e.g., Makan siang)" class="p-3 border rounded-lg focus:ring-2 focus:ring-blue-500 col-span-2" required /><input type="number" id="amount" placeholder="Jumlah (e.g., 50000)" class="p-3 border rounded-lg focus:ring-2 focus:ring-blue-500" required /><select id="category" class="p-3 border rounded-lg bg-white focus:ring-2 focus:ring-blue-500" required></select><input type="date" id="date" class="p-3 border rounded-lg focus:ring-2 focus:ring-blue-500 col-span-2" required /></div><button type="submit" id="submit-btn" class="w-full mt-4 bg-blue-600 text-white p-3 rounded-lg font-bold hover:bg-blue-700 transition-colors">Tambahkan</button>`; const categorySelect = document.getElementById('category'); categorySelect.innerHTML = CATEGORIES.map(c => `<option value="${c}">${c}</option>`).join(''); categorySelect.value = 'Makanan & Minuman'; document.getElementById('date').value = new Date().toISOString().slice(0, 10); formContainer.addEventListener('submit', async (e) => { e.preventDefault(); const form = e.target; await addTransaction({ date: form.date.value, description: form.description.value, category: form.category.value, type: form.type.value, amount: parseFloat(form.amount.value) }); form.reset(); document.getElementById('date').value = new Date().toISOString().slice(0, 10); }); }
+        function setupEditForm() { document.getElementById('edit-form').addEventListener('submit', async (e) => { e.preventDefault(); const form = e.target; const id = form['edit-id'].value; const updatedData = { date: form['edit-date'].value, description: form['edit-description'].value, category: form['edit-category'].value, type: form['edit-type'].value, amount: parseFloat(form['edit-amount'].value) }; await updateTransaction(id, updatedData); }); }
+        function setupFilterControls() { const searchInput = document.getElementById('search-input'); const filterButtons = document.querySelectorAll('.filter-btn'); searchInput.value = searchTerm; searchInput.addEventListener('input', (e) => { searchTerm = e.target.value; applyFiltersAndRender(); }); filterButtons.forEach(btn => { if (btn.dataset.filter === currentFilter) { btn.classList.add('active'); } btn.addEventListener('click', (e) => { currentFilter = e.currentTarget.dataset.filter; filterButtons.forEach(b => b.classList.remove('active')); e.currentTarget.classList.add('active'); applyFiltersAndRender(); }); }); }
+
+        // --- FUNGSI BANTUAN ---
+        function handleError(error, message) { console.error(message, error); alert(message); }
+        function showLoading() { loadingOverlay.classList.remove('hidden'); }
+        function hideLoading() { loadingOverlay.classList.add('hidden'); }
+    </script>
+</body>
+</html>

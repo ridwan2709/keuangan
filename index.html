@@ -67,9 +67,9 @@
                 </div>
                 <div class="flex items-center gap-2 sm:gap-4">
                     <span id="user-email" class="hidden sm:block text-sm text-gray-600"></span>
-                    <!--<button id="migrate-btn" class="bg-yellow-500 text-white font-bold py-2 px-3 sm:px-4 rounded-lg hover:bg-yellow-600 transition-colors text-xs sm:text-sm">-->
-                    <!--    Pindahkan Data Lama-->
-                    <!--</button>-->
+                    <button id="migrate-btn" class="bg-yellow-500 text-white font-bold py-2 px-3 sm:px-4 rounded-lg hover:bg-yellow-600 transition-colors text-xs sm:text-sm">
+                       Pindahkan Data Lama
+                    </button>
                     <button id="logout-btn" class="bg-red-500 text-white font-bold py-2 px-3 sm:px-4 rounded-lg hover:bg-red-600 transition-colors text-xs sm:text-sm">
                         Logout
                     </button>
@@ -110,23 +110,31 @@
                             <option value="Guru">Guru</option>
                             <option value="Lainnya">Lainnya</option>
                         </select>
-                        <select id="category" class="p-3 border rounded-lg bg-white focus:ring-2 focus:ring-blue-500" required>
-                            <option value="">Pilih Kategori</option>
-                            <option value="Sumbangan">Sumbangan</option>
-                            <option value="Dana Bos">Dana Bos</option>
-                            <option value="Iuran Bulanan">Iuran Bulanan</option>
-                            <option value="Lainnya">Lainnya</option>
-                        </select>
-                        <div class="relative col-span-2">
+                        <div class="relative w-full">
+                            <select id="category" class="w-full p-2 border rounded-lg" required>
+                                <option value="">Pilih Kategori</option>
+                            </select>
+                        </div>
+                        <div id="new-category-container" class="hidden mt-2">
                             <div class="flex gap-2">
-                                <button type="button" id="add-category-btn" class="bg-blue-500 text-white px-4 rounded-lg hover:bg-blue-600 transition-colors">+</button>
-                            </div>
-                            <div id="new-category-container" class="hidden mt-2">
-                                <div class="flex gap-2">
-                                    <input type="text" id="new-category" placeholder="Nama kategori baru" class="flex-1 p-2 border rounded-lg focus:ring-2 focus:ring-blue-500">
-                                    <button type="button" id="save-category-btn" class="bg-green-500 text-white px-4 rounded-lg hover:bg-green-600 transition-colors">Simpan</button>
-                                    <button type="button" id="cancel-category-btn" class="bg-gray-300 text-gray-700 px-4 rounded-lg hover:bg-gray-400 transition-colors">Batal</button>
-                                </div>
+                                <input type="text" id="new-category" placeholder="Nama kategori baru" class="flex-1 p-2 border rounded-lg focus:ring-2 focus:ring-blue-500">
+                                <button type="button" id="save-category-btn" class="bg-green-500 text-white px-4 rounded-lg hover:bg-green-600 transition-colors">
+                                    <svg width="30px" height="30px" viewBox="0 0 24 24" fill="none"
+                                    xmlns="http://www.w3.org/2000/svg">
+                                    <path
+                                        d="M4 12.4434L8.14339 16.5868C8.81006 17.2535 9.14339 17.5868 9.5576 17.5868C9.97182 17.5868 10.3051 17.2535 10.9718 16.5868L20.001 7.55762"
+                                        stroke="black" stroke-width="1.6" stroke-linecap="round" class="my-path"></path>
+                                    </svg>
+                                </button>
+                                <button type="button" id="cancel-category-btn" class="bg-gray-300 text-gray-700 px-4 rounded-lg hover:bg-gray-400 transition-colors">
+                                    <svg width="30px" height="30px" viewBox="0 0 24 24" fill="none"
+                                    xmlns="http://www.w3.org/2000/svg">
+                                    <path d="M7.75732 7.75745L16.2426 16.2427" stroke="black" stroke-width="1.6"
+                                        stroke-linecap="round" class="my-path"></path>
+                                    <path d="M16.2426 7.75745L7.75732 16.2427" stroke="black" stroke-width="1.6"
+                                        stroke-linecap="round" class="my-path"></path>
+                                    </svg>
+                                </button>
                             </div>
                         </div>
                         <input type="date" id="date" class="p-3 border rounded-lg focus:ring-2 focus:ring-blue-500" required />
@@ -246,6 +254,190 @@
         let currentUser = null;
         let transactionsCollection = null;
 
+        // Inisialisasi elemen kategori
+        function initCategoryElements() {
+            categorySelect = document.getElementById('category');
+            classSelect = document.getElementById('class');
+            addCategoryBtn = document.getElementById('add-category-btn');
+            newCategoryContainer = document.getElementById('new-category-container');
+            saveCategoryBtn = document.getElementById('save-category-btn');
+            cancelCategoryBtn = document.getElementById('cancel-category-btn');
+            newCategoryInput = document.getElementById('new-category');
+            
+            // Setup event listeners untuk kategori
+            if (addCategoryBtn) {
+                addCategoryBtn.addEventListener('click', () => {
+                    newCategoryContainer.classList.remove('hidden');
+                    newCategoryInput.value = ''; // Clear previous input
+                    newCategoryInput.focus();
+                });
+            }
+            
+            if (saveCategoryBtn) {
+                saveCategoryBtn.addEventListener('click', addNewCategory);
+            }
+            
+            if (cancelCategoryBtn) {
+                cancelCategoryBtn.addEventListener('click', () => {
+                    newCategoryInput.value = '';
+                    newCategoryContainer.classList.add('hidden');
+                });
+            }
+            
+            if (newCategoryInput) {
+                newCategoryInput.addEventListener('keypress', (e) => {
+                    if (e.key === 'Enter') {
+                        e.preventDefault();
+                        addNewCategory();
+                    }
+                });
+            }
+        }
+        
+        // Fungsi untuk menambahkan kategori baru
+        function addNewCategory() {
+            const newCategory = newCategoryInput.value.trim();
+            if (newCategory && !CATEGORIES.includes(newCategory)) {
+                CATEGORIES.push(newCategory);
+                saveCategoriesToLocalStorage();
+                updateCategorySelect(newCategory);
+                newCategoryInput.value = '';
+                newCategoryContainer.classList.add('hidden');
+                
+                // Perbarui juga dropdown kategori di modal edit jika ada
+                const editCategorySelect = document.getElementById('edit-category');
+                if (editCategorySelect) {
+                    const option = document.createElement('option');
+                    option.value = newCategory;
+                    option.textContent = newCategory;
+                    editCategorySelect.appendChild(option);
+                    editCategorySelect.value = newCategory;
+                }
+            }
+        }
+        
+        // Fungsi untuk menghapus kategori
+        function deleteCategory(category) {
+            if (confirm(`Yakin ingin menghapus kategori "${category}"?`)) {
+                const index = CATEGORIES.indexOf(category);
+                if (index > -1) {
+                    CATEGORIES.splice(index, 1);
+                    saveCategoriesToLocalStorage();
+                    updateCategorySelect();
+                    
+                    // Update juga dropdown kategori di modal edit jika ada
+                    const editCategorySelect = document.getElementById('edit-category');
+                    if (editCategorySelect) {
+                        updateEditCategorySelect();
+                    }
+                    
+                    alert(`Kategori "${category}" berhasil dihapus`);
+                }
+            }
+        }
+        
+        // Fungsi untuk memperbarui dropdown kategori
+        function updateCategorySelect(selectedCategory = null) {
+            if (!categorySelect) return;
+            
+            const currentValue = selectedCategory || categorySelect.value;
+            categorySelect.innerHTML = '<option value="">Pilih Kategori</option>';
+            
+            // Buat wrapper untuk custom select
+            const selectWrapper = categorySelect.parentElement;
+            const customSelect = document.createElement('div');
+            customSelect.className = 'relative';
+            
+            // Buat tombol select yang bisa diklik
+            const selectButton = document.createElement('button');
+            selectButton.type = 'button';
+            selectButton.className = 'w-full text-left px-4 py-2 bg-white border rounded-lg flex justify-between items-center';
+            selectButton.innerHTML = `
+                <span id="selected-category">${currentValue || 'Pilih Kategori'}</span>
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
+                </svg>
+            `;
+            
+            // Buat dropdown menu
+            const dropdownMenu = document.createElement('div');
+            dropdownMenu.className = 'hidden absolute z-10 w-full mt-1 bg-white border rounded-lg shadow-lg max-h-60 overflow-y-auto';
+            
+            // Urutkan kategori secara alfabetis
+            const sortedCategories = [...new Set(CATEGORIES)].sort();
+            
+            // Tambahkan tombol hapus untuk setiap kategori
+            sortedCategories.forEach(category => {
+                const option = document.createElement('div');
+                option.className = 'flex items-center justify-between px-4 py-2 hover:bg-gray-100 cursor-pointer';
+                option.innerHTML = `
+                    <span>${category}</span>
+                    <button type="button" class="text-red-500 hover:text-red-700" onclick="event.stopPropagation(); deleteCategory('${category}')">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path>
+                        </svg>
+                    </button>
+                `;
+                option.addEventListener('click', () => {
+                    categorySelect.value = category;
+                    document.getElementById('selected-category').textContent = category;
+                    dropdownMenu.classList.add('hidden');
+                });
+                dropdownMenu.appendChild(option);
+            });
+            
+            // Tambahkan opsi untuk menambahkan kategori baru
+            const addOption = document.createElement('div');
+            addOption.className = 'px-4 py-2 text-blue-500 hover:bg-gray-100 cursor-pointer';
+            addOption.innerHTML = '+ Tambah Kategori Baru';
+            addOption.addEventListener('click', (e) => {
+                e.stopPropagation();
+                newCategoryContainer.classList.remove('hidden');
+                newCategoryInput.value = '';
+                newCategoryInput.focus();
+                dropdownMenu.classList.add('hidden');
+            });
+            dropdownMenu.appendChild(addOption);
+            
+            // Tampilkan/sembunyikan dropdown saat tombol diklik
+            selectButton.addEventListener('click', (e) => {
+                e.stopPropagation();
+                const isOpen = !dropdownMenu.classList.contains('hidden');
+                document.querySelectorAll('.custom-select-dropdown').forEach(dropdown => {
+                    if (dropdown !== dropdownMenu) dropdown.classList.add('hidden');
+                });
+                dropdownMenu.classList.toggle('hidden', isOpen);
+            });
+            
+            // Sembunyikan dropdown saat klik di luar
+            document.addEventListener('click', (e) => {
+                if (!selectWrapper.contains(e.target)) {
+                    dropdownMenu.classList.add('hidden');
+                }
+            });
+            
+            // Hapus elemen custom select yang lama jika ada
+            const oldCustomSelect = selectWrapper.querySelector('.custom-select');
+            if (oldCustomSelect) {
+                selectWrapper.removeChild(oldCustomSelect);
+            }
+            
+            // Tambahkan class untuk custom select
+            customSelect.className = 'custom-select w-full';
+            customSelect.appendChild(selectButton);
+            customSelect.appendChild(dropdownMenu);
+            dropdownMenu.classList.add('custom-select-dropdown');
+            
+            // Ganti select asli dengan custom select
+            categorySelect.style.display = 'none';
+            selectWrapper.appendChild(customSelect);
+            
+            // Update nilai select saat berubah
+            categorySelect.addEventListener('change', (e) => {
+                document.getElementById('selected-category').textContent = e.target.value || 'Pilih Kategori';
+            });
+        }
+
         // --- ELEMEN DOM (diambil sekali untuk efisiensi) ---
         let mainContent, loadingOverlay, authContainer, appContainer, categorySelect, classSelect, addCategoryBtn, newCategoryContainer, saveCategoryBtn, cancelCategoryBtn, newCategoryInput;
         
@@ -256,92 +448,6 @@
             authContainer = document.getElementById('auth-container');
             appContainer = document.getElementById('app-container');
             
-            // Inisialisasi elemen kategori
-            function initCategoryElements() {
-                categorySelect = document.getElementById('category');
-                classSelect = document.getElementById('class');
-                addCategoryBtn = document.getElementById('add-category-btn');
-                newCategoryContainer = document.getElementById('new-category-container');
-                saveCategoryBtn = document.getElementById('save-category-btn');
-                cancelCategoryBtn = document.getElementById('cancel-category-btn');
-                newCategoryInput = document.getElementById('new-category');
-                
-                // Setup event listeners untuk kategori
-                if (addCategoryBtn) {
-                    addCategoryBtn.addEventListener('click', () => {
-                        newCategoryContainer.classList.remove('hidden');
-                        newCategoryInput.focus();
-                    });
-                }
-                
-                if (saveCategoryBtn) {
-                    saveCategoryBtn.addEventListener('click', addNewCategory);
-                }
-                
-                if (cancelCategoryBtn) {
-                    cancelCategoryBtn.addEventListener('click', () => {
-                        newCategoryInput.value = '';
-                        newCategoryContainer.classList.add('hidden');
-                    });
-                }
-                
-                if (newCategoryInput) {
-                    newCategoryInput.addEventListener('keypress', (e) => {
-                        if (e.key === 'Enter') {
-                            e.preventDefault();
-                            addNewCategory();
-                        }
-                    });
-                }
-            }
-            
-            // Fungsi untuk menambahkan kategori baru
-            function addNewCategory() {
-                const newCategory = newCategoryInput.value.trim();
-                if (newCategory && !CATEGORIES.includes(newCategory)) {
-                    CATEGORIES.push(newCategory);
-                    saveCategoriesToLocalStorage();
-                    updateCategorySelect(newCategory);
-                    newCategoryInput.value = '';
-                    newCategoryContainer.classList.add('hidden');
-                    
-                    // Perbarui juga dropdown kategori di modal edit jika ada
-                    const editCategorySelect = document.getElementById('edit-category');
-                    if (editCategorySelect) {
-                        const option = document.createElement('option');
-                        option.value = newCategory;
-                        option.textContent = newCategory;
-                        editCategorySelect.appendChild(option);
-                        editCategorySelect.value = newCategory;
-                    }
-                }
-            }
-            
-            // Fungsi untuk memperbarui dropdown kategori
-            function updateCategorySelect(selectedCategory = null) {
-                if (!categorySelect) return;
-                
-                const currentValue = selectedCategory || categorySelect.value;
-                categorySelect.innerHTML = '<option value="">Pilih Kategori</option>';
-                
-                // Urutkan kategori secara alfabetis
-                const sortedCategories = [...new Set(CATEGORIES)].sort();
-                
-                sortedCategories.forEach(category => {
-                    const option = document.createElement('option');
-                    option.value = category;
-                    option.textContent = category;
-                    categorySelect.appendChild(option);
-                });
-                
-                // Setel nilai yang dipilih sebelumnya jika ada
-                if (currentValue && sortedCategories.includes(currentValue)) {
-                    categorySelect.value = currentValue;
-                } else if (sortedCategories.length > 0) {
-                    categorySelect.value = sortedCategories[0];
-                }
-            }
-
             // Setup listener untuk halaman login/register
             const loginView = document.getElementById('login-view');
             const registerView = document.getElementById('register-view');
@@ -350,10 +456,10 @@
             document.getElementById('login-form').addEventListener('submit', handleLogin);
             document.getElementById('register-form').addEventListener('submit', handleRegister);
             document.getElementById('logout-btn').addEventListener('click', handleLogout);
-            document.getElementById('migrate-btn').addEventListener('click', handleMigrateData);
-            document.getElementById('clear-data-btn').addEventListener('click', clearAllData);
-            document.getElementById('import-btn').addEventListener('click', () => document.getElementById('import-file-input').click());
-            document.getElementById('import-file-input').addEventListener('change', handleFileImport);
+            // document.getElementById('migrate-btn').addEventListener('click', handleMigrateData);
+            // document.getElementById('clear-data-btn').addEventListener('click', clearAllData);
+            // document.getElementById('import-btn').addEventListener('click', () => document.getElementById('import-file-input').click());
+            // document.getElementById('import-file-input').addEventListener('change', handleFileImport);
 
             initCategoryElements();
         });
@@ -540,6 +646,11 @@
             mainContent.innerHTML = '';
             mainContent.appendChild(template.content.cloneNode(true));
             
+            // Initialize category elements and update dropdown
+            initCategoryElements();
+            updateCategorySelect();
+            
+            // Set up event listeners
             document.getElementById('export-excel-btn').addEventListener('click', exportToExcel);
             document.getElementById('transaction-list').addEventListener('click', handleListClick);
             document.getElementById('edit-form').addEventListener('submit', handleEditFormSubmit);
@@ -579,7 +690,51 @@
 
         function renderPaginationControls(totalItems) { const controlsContainer = document.getElementById('pagination-controls'); const totalPages = Math.ceil(totalItems / ITEMS_PER_PAGE); if (totalPages <= 1 && totalItems <= ITEMS_PER_PAGE) { controlsContainer.innerHTML = ''; return; } const prevDisabled = currentPage === 1 ? 'disabled' : ''; const nextDisabled = currentPage === totalPages ? 'disabled' : ''; const itemsPerPageOptions = [5, 10, 25, 50]; const selectHTML = `<div class="flex items-center gap-2 text-sm"><label for="items-per-page" class="text-gray-600">Tampilkan:</label><select id="items-per-page" class="border rounded-md p-1 bg-white">${itemsPerPageOptions.map(option => `<option value="${option}" ${option === ITEMS_PER_PAGE ? 'selected' : ''}>${option}</option>`).join('')}</select></div>`; controlsContainer.innerHTML = `<div class="flex items-center gap-2"><button id="prev-page-btn" class="px-3 py-1 sm:px-4 sm:py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 disabled:opacity-50 disabled:cursor-not-allowed text-sm" ${prevDisabled}>Sebelumnya</button><button id="next-page-btn" class="px-3 py-1 sm:px-4 sm:py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 disabled:opacity-50 disabled:cursor-not-allowed text-sm" ${nextDisabled}>Berikutnya</button></div><span class="text-sm font-semibold text-gray-600 order-first sm:order-none w-full sm:w-auto text-center">Halaman ${currentPage} dari ${totalPages || 1}</span>${selectHTML}`; document.getElementById('prev-page-btn')?.addEventListener('click', () => { if (currentPage > 1) { currentPage--; applyFiltersAndRender(); } }); document.getElementById('next-page-btn')?.addEventListener('click', () => { if (currentPage < totalPages) { currentPage++; applyFiltersAndRender(); } }); document.getElementById('items-per-page').addEventListener('change', (e) => { ITEMS_PER_PAGE = parseInt(e.target.value, 10); currentPage = 1; applyFiltersAndRender(); }); }
         function handleListClick(event) { const editBtn = event.target.closest('.edit-btn'); if (editBtn) { const id = editBtn.dataset.id; const transaction = allTransactions.find(t => t.id === id); if (transaction) openEditModal(transaction); return; } const deleteBtn = event.target.closest('.delete-btn'); if (deleteBtn) { const id = deleteBtn.dataset.id; deleteTransaction(id); return; } }
-        function setupAddForm() { const formContainer = document.getElementById('transaction-form'); const categorySelect = formContainer.querySelector('#category'); categorySelect.innerHTML = CATEGORIES.map(c => `<option value="${c}">${c}</option>`).join(''); categorySelect.value = 'Makanan & Minuman'; formContainer.querySelector('#date').value = new Date().toISOString().slice(0, 10); formContainer.addEventListener('submit', async (e) => { e.preventDefault(); const form = e.target; await addTransaction({ date: form.date.value, description: form.description.value, category: form.category.value, type: form.type.value, amount: parseFloat(form.amount.value) }); form.reset(); formContainer.querySelector('#date').value = new Date().toISOString().slice(0, 10); categorySelect.value = 'Makanan & Minuman'; }); }
+        function setupAddForm() { 
+            const formContainer = document.getElementById('transaction-form'); 
+            const categorySelect = formContainer.querySelector('#category'); 
+            const classSelect = formContainer.querySelector('#class');
+            
+            // Set default values
+            formContainer.querySelector('#date').value = new Date().toISOString().slice(0, 10);
+            
+            formContainer.addEventListener('submit', async (e) => { 
+                e.preventDefault(); 
+                const form = e.target; 
+                
+                // Basic validation
+                if (!form.class.value) {
+                    alert('Silakan pilih kelas');
+                    return;
+                }
+                
+                if (!form.category.value) {
+                    alert('Silakan pilih kategori');
+                    return;
+                }
+                
+                try {
+                    await addTransaction({ 
+                        date: form.date.value, 
+                        description: form.description.value, 
+                        category: form.category.value, 
+                        class: form.class.value,
+                        type: form.type.value, 
+                        amount: parseFloat(form.amount.value) 
+                    }); 
+                    
+                    // Reset form but keep the class and date
+                    form.reset();
+                    form.date.value = new Date().toISOString().slice(0, 10);
+                    form.class.value = '';
+                    updateCategorySelect();
+                    
+                } catch (error) {
+                    console.error('Error adding transaction:', error);
+                    alert('Terjadi kesalahan saat menambahkan transaksi');
+                }
+            }); 
+        }
         async function handleEditFormSubmit(e) { e.preventDefault(); const form = e.target; const id = form['edit-id'].value; const updatedData = { date: form['edit-date'].value, description: form['edit-description'].value, category: form['edit-category'].value, type: form.elements['edit-type'].value, amount: parseFloat(form['edit-amount'].value) }; await updateTransaction(id, updatedData); }
         function setupFilterControls() { const searchInput = document.getElementById('search-input'); const filterButtons = document.querySelectorAll('.filter-btn'); searchInput.value = searchTerm; searchInput.addEventListener('input', (e) => { currentPage = 1; searchTerm = e.target.value; applyFiltersAndRender(); }); filterButtons.forEach(btn => { if (btn.dataset.filter === currentFilter) { btn.classList.add('active'); } btn.addEventListener('click', (e) => { currentPage = 1; currentFilter = e.currentTarget.dataset.filter; filterButtons.forEach(b => b.classList.remove('active')); e.currentTarget.classList.add('active'); applyFiltersAndRender(); }); }); }
         function getFilteredTransactions() { let filtered = [...allTransactions]; if (currentFilter === 'pemasukan') { filtered = filtered.filter(t => t.type === 'Pemasukan'); } else if (currentFilter === 'pengeluaran') { filtered = filtered.filter(t => t.type === 'Pengeluaran'); } const term = searchTerm.toLowerCase(); if (term) { filtered = filtered.filter(t => t.description.toLowerCase().includes(term) || t.amount.toString().includes(term) || t.category.toLowerCase().includes(term) || t.date.includes(term)); } return filtered; }

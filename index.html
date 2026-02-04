@@ -102,8 +102,34 @@
                         </div>
                         <input type="text" id="description" placeholder="Deskripsi (e.g., Makan siang)" class="p-3 border rounded-lg focus:ring-2 focus:ring-blue-500 col-span-2" required />
                         <input type="number" id="amount" placeholder="Jumlah (e.g., 50000)" class="p-3 border rounded-lg focus:ring-2 focus:ring-blue-500" required />
-                        <select id="category" class="p-3 border rounded-lg bg-white focus:ring-2 focus:ring-blue-500" required></select>
-                        <input type="date" id="date" class="p-3 border rounded-lg focus:ring-2 focus:ring-blue-500 col-span-2" required />
+                        <select id="class" class="p-3 border rounded-lg bg-white focus:ring-2 focus:ring-blue-500" required>
+                            <option value="">Pilih Kelas</option>
+                            <option value="X">X</option>
+                            <option value="XI">XI</option>
+                            <option value="XII">XII</option>
+                            <option value="Guru">Guru</option>
+                            <option value="Lainnya">Lainnya</option>
+                        </select>
+                        <select id="category" class="p-3 border rounded-lg bg-white focus:ring-2 focus:ring-blue-500" required>
+                            <option value="">Pilih Kategori</option>
+                            <option value="Sumbangan">Sumbangan</option>
+                            <option value="Dana Bos">Dana Bos</option>
+                            <option value="Iuran Bulanan">Iuran Bulanan</option>
+                            <option value="Lainnya">Lainnya</option>
+                        </select>
+                        <div class="relative col-span-2">
+                            <div class="flex gap-2">
+                                <button type="button" id="add-category-btn" class="bg-blue-500 text-white px-4 rounded-lg hover:bg-blue-600 transition-colors">+</button>
+                            </div>
+                            <div id="new-category-container" class="hidden mt-2">
+                                <div class="flex gap-2">
+                                    <input type="text" id="new-category" placeholder="Nama kategori baru" class="flex-1 p-2 border rounded-lg focus:ring-2 focus:ring-blue-500">
+                                    <button type="button" id="save-category-btn" class="bg-green-500 text-white px-4 rounded-lg hover:bg-green-600 transition-colors">Simpan</button>
+                                    <button type="button" id="cancel-category-btn" class="bg-gray-300 text-gray-700 px-4 rounded-lg hover:bg-gray-400 transition-colors">Batal</button>
+                                </div>
+                            </div>
+                        </div>
+                        <input type="date" id="date" class="p-3 border rounded-lg focus:ring-2 focus:ring-blue-500" required />
                     </div>
                     <button type="submit" id="submit-btn" class="w-full mt-4 bg-blue-600 text-white p-3 rounded-lg font-bold hover:bg-blue-700 transition-colors">Tambahkan</button>
                 </form>
@@ -148,6 +174,14 @@
                     <input type="text" id="edit-description" placeholder="Deskripsi" class="p-3 border rounded-lg focus:ring-2 focus:ring-blue-500 col-span-2" required />
                     <input type="number" id="edit-amount" placeholder="Jumlah" class="p-3 border rounded-lg focus:ring-2 focus:ring-blue-500" required />
                     <select id="edit-category" class="p-3 border rounded-lg bg-white focus:ring-2 focus:ring-blue-500" required></select>
+                    <select id="edit-class" class="p-3 border rounded-lg bg-white focus:ring-2 focus:ring-blue-500" required>
+                        <option value="">Pilih Kelas</option>
+                        <option value="X">X</option>
+                        <option value="XI">XI</option>
+                        <option value="XII">XII</option>
+                        <option value="Guru">Guru</option>
+                        <option value="Lainnya">Lainnya</option>
+                    </select>
                     <input type="date" id="edit-date" class="p-3 border rounded-lg focus:ring-2 focus:ring-blue-500 col-span-2" required />
                 </div>
                 <div class="flex justify-end gap-4 mt-6">
@@ -180,7 +214,29 @@
         const auth = firebase.auth();
 
         // --- VARIABEL GLOBAL ---
-        const CATEGORIES = ['Dana Awal', 'SPP', 'Gaji', 'Makanan & Minuman', 'Transportasi', 'Belanja', 'Tagihan', 'Kesehatan', 'Hiburan', 'Pendidikan', 'Investasi', 'Lainnya'];
+        let CATEGORIES = ['Sumbangan', 'Dana Bos', 'Iuran Bulanan', 'Lainnya'];
+        
+        // Inisialisasi kategori dari localStorage jika ada
+        if (localStorage.getItem('categories')) {
+            try {
+                const savedCategories = JSON.parse(localStorage.getItem('categories'));
+                if (Array.isArray(savedCategories) && savedCategories.length > 0) {
+                    CATEGORIES = [...new Set([...savedCategories, ...CATEGORIES])];
+                }
+            } catch (e) {
+                console.error('Error loading categories from localStorage:', e);
+            }
+        }
+        
+        // Simpan kategori ke localStorage
+        function saveCategoriesToLocalStorage() {
+            try {
+                localStorage.setItem('categories', JSON.stringify(CATEGORIES));
+            } catch (e) {
+                console.error('Error saving categories to localStorage:', e);
+            }
+        }
+        const CLASSES = ['X', 'XI', 'XII', 'Guru', 'Lainnya'];
         
         let allTransactions = [];
         let currentFilter = 'semua';
@@ -191,7 +247,7 @@
         let transactionsCollection = null;
 
         // --- ELEMEN DOM (diambil sekali untuk efisiensi) ---
-        let mainContent, loadingOverlay, authContainer, appContainer;
+        let mainContent, loadingOverlay, authContainer, appContainer, categorySelect, classSelect, addCategoryBtn, newCategoryContainer, saveCategoryBtn, cancelCategoryBtn, newCategoryInput;
         
         document.addEventListener('DOMContentLoaded', () => {
             // Assign elemen DOM setelah dokumen siap
@@ -199,6 +255,92 @@
             loadingOverlay = document.getElementById('loading-overlay');
             authContainer = document.getElementById('auth-container');
             appContainer = document.getElementById('app-container');
+            
+            // Inisialisasi elemen kategori
+            function initCategoryElements() {
+                categorySelect = document.getElementById('category');
+                classSelect = document.getElementById('class');
+                addCategoryBtn = document.getElementById('add-category-btn');
+                newCategoryContainer = document.getElementById('new-category-container');
+                saveCategoryBtn = document.getElementById('save-category-btn');
+                cancelCategoryBtn = document.getElementById('cancel-category-btn');
+                newCategoryInput = document.getElementById('new-category');
+                
+                // Setup event listeners untuk kategori
+                if (addCategoryBtn) {
+                    addCategoryBtn.addEventListener('click', () => {
+                        newCategoryContainer.classList.remove('hidden');
+                        newCategoryInput.focus();
+                    });
+                }
+                
+                if (saveCategoryBtn) {
+                    saveCategoryBtn.addEventListener('click', addNewCategory);
+                }
+                
+                if (cancelCategoryBtn) {
+                    cancelCategoryBtn.addEventListener('click', () => {
+                        newCategoryInput.value = '';
+                        newCategoryContainer.classList.add('hidden');
+                    });
+                }
+                
+                if (newCategoryInput) {
+                    newCategoryInput.addEventListener('keypress', (e) => {
+                        if (e.key === 'Enter') {
+                            e.preventDefault();
+                            addNewCategory();
+                        }
+                    });
+                }
+            }
+            
+            // Fungsi untuk menambahkan kategori baru
+            function addNewCategory() {
+                const newCategory = newCategoryInput.value.trim();
+                if (newCategory && !CATEGORIES.includes(newCategory)) {
+                    CATEGORIES.push(newCategory);
+                    saveCategoriesToLocalStorage();
+                    updateCategorySelect(newCategory);
+                    newCategoryInput.value = '';
+                    newCategoryContainer.classList.add('hidden');
+                    
+                    // Perbarui juga dropdown kategori di modal edit jika ada
+                    const editCategorySelect = document.getElementById('edit-category');
+                    if (editCategorySelect) {
+                        const option = document.createElement('option');
+                        option.value = newCategory;
+                        option.textContent = newCategory;
+                        editCategorySelect.appendChild(option);
+                        editCategorySelect.value = newCategory;
+                    }
+                }
+            }
+            
+            // Fungsi untuk memperbarui dropdown kategori
+            function updateCategorySelect(selectedCategory = null) {
+                if (!categorySelect) return;
+                
+                const currentValue = selectedCategory || categorySelect.value;
+                categorySelect.innerHTML = '<option value="">Pilih Kategori</option>';
+                
+                // Urutkan kategori secara alfabetis
+                const sortedCategories = [...new Set(CATEGORIES)].sort();
+                
+                sortedCategories.forEach(category => {
+                    const option = document.createElement('option');
+                    option.value = category;
+                    option.textContent = category;
+                    categorySelect.appendChild(option);
+                });
+                
+                // Setel nilai yang dipilih sebelumnya jika ada
+                if (currentValue && sortedCategories.includes(currentValue)) {
+                    categorySelect.value = currentValue;
+                } else if (sortedCategories.length > 0) {
+                    categorySelect.value = sortedCategories[0];
+                }
+            }
 
             // Setup listener untuk halaman login/register
             const loginView = document.getElementById('login-view');
@@ -212,6 +354,8 @@
             document.getElementById('clear-data-btn').addEventListener('click', clearAllData);
             document.getElementById('import-btn').addEventListener('click', () => document.getElementById('import-file-input').click());
             document.getElementById('import-file-input').addEventListener('change', handleFileImport);
+
+            initCategoryElements();
         });
 
         // --- MANAJEMEN AUTENTIKASI ---
@@ -440,7 +584,7 @@
         function setupFilterControls() { const searchInput = document.getElementById('search-input'); const filterButtons = document.querySelectorAll('.filter-btn'); searchInput.value = searchTerm; searchInput.addEventListener('input', (e) => { currentPage = 1; searchTerm = e.target.value; applyFiltersAndRender(); }); filterButtons.forEach(btn => { if (btn.dataset.filter === currentFilter) { btn.classList.add('active'); } btn.addEventListener('click', (e) => { currentPage = 1; currentFilter = e.currentTarget.dataset.filter; filterButtons.forEach(b => b.classList.remove('active')); e.currentTarget.classList.add('active'); applyFiltersAndRender(); }); }); }
         function getFilteredTransactions() { let filtered = [...allTransactions]; if (currentFilter === 'pemasukan') { filtered = filtered.filter(t => t.type === 'Pemasukan'); } else if (currentFilter === 'pengeluaran') { filtered = filtered.filter(t => t.type === 'Pengeluaran'); } const term = searchTerm.toLowerCase(); if (term) { filtered = filtered.filter(t => t.description.toLowerCase().includes(term) || t.amount.toString().includes(term) || t.category.toLowerCase().includes(term) || t.date.includes(term)); } return filtered; }
         function renderSummary(transactions) { const { totalIncome, totalExpense } = transactions.reduce((acc, t) => { const amount = parseFloat(t.amount) || 0; if (t.type === 'Pemasukan') acc.totalIncome += amount; else acc.totalExpense += amount; return acc; }, { totalIncome: 0, totalExpense: 0 }); document.getElementById('summary-section').innerHTML = `<div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8"><div class="bg-green-100 border-l-4 border-green-500 text-green-800 p-4 rounded-lg shadow-md"><p class="text-sm font-semibold">Total Pemasukan</p> <p class="text-2xl font-bold">Rp ${totalIncome.toLocaleString('id-ID')}</p></div><div class="bg-red-100 border-l-4 border-red-500 text-red-800 p-4 rounded-lg shadow-md"><p class="text-sm font-semibold">Total Pengeluaran</p> <p class="text-2xl font-bold">Rp ${totalExpense.toLocaleString('id-ID')}</p></div><div class="bg-blue-100 border-l-4 border-blue-500 text-blue-800 p-4 rounded-lg shadow-md"><p class="text-sm font-semibold">Saldo Akhir</p> <p class="text-2xl font-bold">Rp ${(totalIncome - totalExpense).toLocaleString('id-ID')}</p></div></div>`; }
-        function openEditModal(transaction) { const modal = document.getElementById('edit-modal'); const form = document.getElementById('edit-form'); form.querySelector('#edit-id').value = transaction.id; form.querySelector('#edit-description').value = transaction.description; form.querySelector('#edit-amount').value = transaction.amount; form.querySelector('#edit-date').value = transaction.date; const categorySelect = form.querySelector('#edit-category'); categorySelect.innerHTML = CATEGORIES.map(c => `<option value="${c}" ${c === transaction.category ? 'selected' : ''}>${c}</option>`).join(''); const typeContainer = form.querySelector('#edit-type-container'); typeContainer.innerHTML = `<label class="flex-1 p-3 rounded-lg text-center cursor-pointer transition-all ${transaction.type === 'Pemasukan' ? 'bg-green-500 text-white' : 'bg-gray-200 text-gray-700'}"><input type="radio" name="edit-type" value="Pemasukan" class="hidden" ${transaction.type === 'Pemasukan' ? 'checked' : ''} /> Pemasukan</label><label class="flex-1 p-3 rounded-lg text-center cursor-pointer transition-all ${transaction.type === 'Pengeluaran' ? 'bg-red-500 text-white' : 'bg-gray-200 text-gray-700'}"><input type="radio" name="edit-type" value="Pengeluaran" class="hidden" ${transaction.type === 'Pengeluaran' ? 'checked' : ''} /> Pengeluaran</label>`; modal.classList.remove('hidden'); }
+        function openEditModal(transaction) { const modal = document.getElementById('edit-modal'); const form = document.getElementById('edit-form'); form.querySelector('#edit-id').value = transaction.id; form.querySelector('#edit-description').value = transaction.description || ''; form.querySelector('#edit-amount').value = transaction.amount || ''; const typeContainer = form.querySelector('#edit-type-container'); typeContainer.innerHTML = `<label class="flex-1 p-3 rounded-lg text-center cursor-pointer transition-all ${transaction.type === 'Pemasukan' ? 'bg-green-500 text-white' : 'bg-gray-200 text-gray-700'}"><input type="radio" name="edit-type" value="Pemasukan" class="hidden" ${transaction.type === 'Pemasukan' ? 'checked' : ''}> Pemasukan</label><label class="flex-1 p-3 rounded-lg text-center cursor-pointer transition-all ${transaction.type === 'Pengeluaran' ? 'bg-red-500 text-white' : 'bg-gray-200 text-gray-700'}"><input type="radio" name="edit-type" value="Pengeluaran" class="hidden" ${transaction.type === 'Pengeluaran' ? 'checked' : ''}> Pengeluaran</label>`; const categorySelect = form.querySelector('#edit-category'); categorySelect.innerHTML = CATEGORIES.map(cat => `<option value="${cat}" ${transaction.category === cat ? 'selected' : ''}>${cat}</option>`).join(''); const classSelect = form.querySelector('#edit-class'); classSelect.value = transaction.class || 'Lainnya'; form.querySelector('#edit-date').value = transaction.date || new Date().toISOString().split('T')[0]; modal.classList.remove('hidden'); }
         function closeEditModal() { document.getElementById('edit-modal').classList.add('hidden'); }
         function handleFileImport(event) { const file = event.target.files[0]; if (!file) { return; } const reader = new FileReader(); reader.onload = async function(e) { try { const data = JSON.parse(e.target.result); if (data && Array.isArray(data.transactions)) { await importDataToFirebase(data.transactions); } else { throw new Error("Format file JSON tidak valid."); } } catch (error) { handleError(error, "Gagal membaca file JSON."); } }; reader.readAsText(file); event.target.value = null; }
         async function importDataToFirebase(transactions) { if (!confirm(`Anda akan mengimpor ${transactions.length} transaksi. Lanjutkan?`)) { return; } showLoading(); try { const batch = db.batch(); transactions.forEach(t => { const docRef = transactionsCollection.doc(); const transactionData = { ...t, createdAt: firebase.firestore.FieldValue.serverTimestamp() }; delete transactionData.id; batch.set(docRef, transactionData); }); await batch.commit(); alert(`Berhasil mengimpor ${transactions.length} transaksi!`); await updateView(); } catch (error) { handleError(error, "Gagal mengimpor data."); } finally { hideLoading(); } }

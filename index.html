@@ -211,15 +211,16 @@
             authDomain: "keuangansmk-dfdcf.firebaseapp.com",
             projectId: "keuangansmk-dfdcf",
             storageBucket: "keuangansmk-dfdcf.appspot.com",
-            messagingSenderId: "63210771692",
-            appId: "1:63210771692:web:956a3b9b9b727be08cc1c9",
-            measurementId: "G-V8K682E130"
         };
 
         // Inisialisasi Firebase
         firebase.initializeApp(firebaseConfig);
         const db = firebase.firestore();
         const auth = firebase.auth();
+
+        // --- VARIABEL GLOBAL ---
+        let currentUser = null;
+        let transactionsCollection = null;
 
         // --- VARIABEL GLOBAL ---
         let CATEGORIES = ['Sumbangan', 'Dana Bos', 'Iuran Bulanan', 'Lainnya'];
@@ -236,6 +237,11 @@
             }
         }
         
+        // Inisialisasi kategori select saat halaman dimuat
+        document.addEventListener('DOMContentLoaded', () => {
+            updateCategorySelect();
+        });
+        
         // Simpan kategori ke localStorage
         function saveCategoriesToLocalStorage() {
             try {
@@ -251,8 +257,6 @@
         let searchTerm = '';
         let currentPage = 1;
         let ITEMS_PER_PAGE = 10;
-        let currentUser = null;
-        let transactionsCollection = null;
 
         // Inisialisasi elemen kategori
         function initCategoryElements() {
@@ -300,11 +304,23 @@
             if (newCategory && !CATEGORIES.includes(newCategory)) {
                 CATEGORIES.push(newCategory);
                 saveCategoriesToLocalStorage();
+                
+                // Update the hidden select first
+                const categorySelect = document.getElementById('category');
+                if (categorySelect) {
+                    const option = document.createElement('option');
+                    option.value = newCategory;
+                    option.textContent = newCategory;
+                    categorySelect.appendChild(option);
+                    categorySelect.value = newCategory; // Set the value
+                }
+                
+                // Then update the UI
                 updateCategorySelect(newCategory);
                 newCategoryInput.value = '';
                 newCategoryContainer.classList.add('hidden');
                 
-                // Perbarui juga dropdown kategori di modal edit jika ada
+                // Update the edit modal's category select if it exists
                 const editCategorySelect = document.getElementById('edit-category');
                 if (editCategorySelect) {
                     const option = document.createElement('option');
@@ -338,10 +354,20 @@
         
         // Fungsi untuk memperbarui dropdown kategori
         function updateCategorySelect(selectedCategory = null) {
+            const categorySelect = document.getElementById('category');
             if (!categorySelect) return;
             
             const currentValue = selectedCategory || categorySelect.value;
             categorySelect.innerHTML = '<option value="">Pilih Kategori</option>';
+            
+            // Add all categories as options to the hidden select
+            const sortedCategories = [...new Set(CATEGORIES)].sort();
+            sortedCategories.forEach(category => {
+                const option = document.createElement('option');
+                option.value = category;
+                option.textContent = category;
+                categorySelect.appendChild(option);
+            });
             
             // Buat wrapper untuk custom select
             const selectWrapper = categorySelect.parentElement;
@@ -363,9 +389,6 @@
             const dropdownMenu = document.createElement('div');
             dropdownMenu.className = 'hidden absolute z-10 w-full mt-1 bg-white border rounded-lg shadow-lg max-h-60 overflow-y-auto';
             
-            // Urutkan kategori secara alfabetis
-            const sortedCategories = [...new Set(CATEGORIES)].sort();
-            
             // Tambahkan tombol hapus untuk setiap kategori
             sortedCategories.forEach(category => {
                 const option = document.createElement('div');
@@ -374,7 +397,7 @@
                     <span>${category}</span>
                     <button type="button" class="text-red-500 hover:text-red-700" onclick="event.stopPropagation(); deleteCategory('${category}')">
                         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path>
+                            <path d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path>
                         </svg>
                     </button>
                 `;
@@ -489,11 +512,37 @@
             const password = document.getElementById('login-password').value;
             const errorP = document.getElementById('auth-error');
             errorP.textContent = '';
+            
+            if (!email || !password) {
+                errorP.textContent = "Email dan password harus diisi.";
+                return;
+            }
+            
             showLoading();
             try {
-                await auth.signInWithEmailAndPassword(email, password);
+                const userCredential = await auth.signInWithEmailAndPassword(email, password);
+                currentUser = userCredential.user;
+                transactionsCollection = db.collection('users').doc(currentUser.uid).collection('transactions');
+                
+                // Update UI setelah login berhasil
+                authContainer.classList.add('hidden');
+                appContainer.classList.remove('hidden');
+                document.getElementById('user-email').textContent = currentUser.email;
+                
+                // Reset form login
+                e.target.reset();
+                
+                // Muat data transaksi
+                await updateView();
             } catch (error) {
-                errorP.textContent = "Email atau password salah.";
+                console.error('Login error:', error);
+                if (error.code === 'auth/user-not-found' || error.code === 'auth/wrong-password') {
+                    errorP.textContent = "Email atau password salah.";
+                } else if (error.code === 'auth/too-many-requests') {
+                    errorP.textContent = "Terlalu banyak percobaan login. Silakan coba lagi nanti.";
+                } else {
+                    errorP.textContent = "Terjadi kesalahan saat login. Silakan coba lagi.";
+                }
             } finally {
                 hideLoading();
             }
@@ -690,50 +739,70 @@
 
         function renderPaginationControls(totalItems) { const controlsContainer = document.getElementById('pagination-controls'); const totalPages = Math.ceil(totalItems / ITEMS_PER_PAGE); if (totalPages <= 1 && totalItems <= ITEMS_PER_PAGE) { controlsContainer.innerHTML = ''; return; } const prevDisabled = currentPage === 1 ? 'disabled' : ''; const nextDisabled = currentPage === totalPages ? 'disabled' : ''; const itemsPerPageOptions = [5, 10, 25, 50]; const selectHTML = `<div class="flex items-center gap-2 text-sm"><label for="items-per-page" class="text-gray-600">Tampilkan:</label><select id="items-per-page" class="border rounded-md p-1 bg-white">${itemsPerPageOptions.map(option => `<option value="${option}" ${option === ITEMS_PER_PAGE ? 'selected' : ''}>${option}</option>`).join('')}</select></div>`; controlsContainer.innerHTML = `<div class="flex items-center gap-2"><button id="prev-page-btn" class="px-3 py-1 sm:px-4 sm:py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 disabled:opacity-50 disabled:cursor-not-allowed text-sm" ${prevDisabled}>Sebelumnya</button><button id="next-page-btn" class="px-3 py-1 sm:px-4 sm:py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 disabled:opacity-50 disabled:cursor-not-allowed text-sm" ${nextDisabled}>Berikutnya</button></div><span class="text-sm font-semibold text-gray-600 order-first sm:order-none w-full sm:w-auto text-center">Halaman ${currentPage} dari ${totalPages || 1}</span>${selectHTML}`; document.getElementById('prev-page-btn')?.addEventListener('click', () => { if (currentPage > 1) { currentPage--; applyFiltersAndRender(); } }); document.getElementById('next-page-btn')?.addEventListener('click', () => { if (currentPage < totalPages) { currentPage++; applyFiltersAndRender(); } }); document.getElementById('items-per-page').addEventListener('change', (e) => { ITEMS_PER_PAGE = parseInt(e.target.value, 10); currentPage = 1; applyFiltersAndRender(); }); }
         function handleListClick(event) { const editBtn = event.target.closest('.edit-btn'); if (editBtn) { const id = editBtn.dataset.id; const transaction = allTransactions.find(t => t.id === id); if (transaction) openEditModal(transaction); return; } const deleteBtn = event.target.closest('.delete-btn'); if (deleteBtn) { const id = deleteBtn.dataset.id; deleteTransaction(id); return; } }
-        function setupAddForm() { 
-            const formContainer = document.getElementById('transaction-form'); 
-            const categorySelect = formContainer.querySelector('#category'); 
-            const classSelect = formContainer.querySelector('#class');
+        function setupAddForm() {
+            const form = document.getElementById('transaction-form');
+            if (!form) return;
             
-            // Set default values
-            formContainer.querySelector('#date').value = new Date().toISOString().slice(0, 10);
+            // Set default date to today
+            const dateInput = form.querySelector('#date');
+            if (dateInput && !dateInput.value) {
+                dateInput.value = new Date().toISOString().slice(0, 10);
+            }
             
-            formContainer.addEventListener('submit', async (e) => { 
-                e.preventDefault(); 
-                const form = e.target; 
+            // Set default type to Pengeluaran if not set
+            const defaultType = form.querySelector('input[name="type"][value="Pengeluaran"]');
+            if (defaultType && !form.querySelector('input[name="type"]:checked')) {
+                defaultType.checked = true;
+            }
+            
+            form.addEventListener('submit', async (e) => {
+                e.preventDefault();
                 
-                // Basic validation
-                if (!form.class.value) {
-                    alert('Silakan pilih kelas');
-                    return;
-                }
+                const type = form.querySelector('input[name="type"]:checked')?.value;
+                const description = form.querySelector('#description')?.value.trim();
+                const amount = parseFloat(form.querySelector('#amount')?.value);
+                const selectedClass = form.querySelector('#class')?.value;
+                const date = form.querySelector('#date')?.value;
                 
-                if (!form.category.value) {
-                    alert('Silakan pilih kategori');
+                // Get the category from the hidden select element
+                const categorySelect = form.querySelector('#category');
+                const category = categorySelect ? categorySelect.value : '';
+                
+                if (!type || !description || isNaN(amount) || amount <= 0 || 
+                    !category || category === 'Pilih Kategori' || 
+                    !selectedClass || !date) {
+                    alert('Mohon isi semua field dengan benar');
                     return;
                 }
                 
                 try {
                     await addTransaction({ 
-                        date: form.date.value, 
-                        description: form.description.value, 
-                        category: form.category.value, 
-                        class: form.class.value,
-                        type: form.type.value, 
-                        amount: parseFloat(form.amount.value) 
-                    }); 
+                        date: date,
+                        description: description,
+                        category: category,
+                        class: selectedClass,
+                        type: type,
+                        amount: amount,
+                        createdAt: firebase.firestore.FieldValue.serverTimestamp()
+                    });
                     
                     // Reset form but keep the class and date
                     form.reset();
-                    form.date.value = new Date().toISOString().slice(0, 10);
-                    form.class.value = '';
-                    updateCategorySelect();
+                    if (dateInput) {
+                        dateInput.value = new Date().toISOString().slice(0, 10);
+                    }
+                    if (defaultType) {
+                        defaultType.checked = true;
+                    }
+                    
+                    // Update the view to show the new transaction
+                    await updateView();
                     
                 } catch (error) {
                     console.error('Error adding transaction:', error);
-                    alert('Terjadi kesalahan saat menambahkan transaksi');
+                    alert('Terjadi kesalahan saat menambahkan transaksi: ' + error.message);
                 }
-            }); 
+            });
         }
         async function handleEditFormSubmit(e) { e.preventDefault(); const form = e.target; const id = form['edit-id'].value; const updatedData = { date: form['edit-date'].value, description: form['edit-description'].value, category: form['edit-category'].value, type: form.elements['edit-type'].value, amount: parseFloat(form['edit-amount'].value) }; await updateTransaction(id, updatedData); }
         function setupFilterControls() { const searchInput = document.getElementById('search-input'); const filterButtons = document.querySelectorAll('.filter-btn'); searchInput.value = searchTerm; searchInput.addEventListener('input', (e) => { currentPage = 1; searchTerm = e.target.value; applyFiltersAndRender(); }); filterButtons.forEach(btn => { if (btn.dataset.filter === currentFilter) { btn.classList.add('active'); } btn.addEventListener('click', (e) => { currentPage = 1; currentFilter = e.currentTarget.dataset.filter; filterButtons.forEach(b => b.classList.remove('active')); e.currentTarget.classList.add('active'); applyFiltersAndRender(); }); }); }
